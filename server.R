@@ -1,23 +1,30 @@
 #Loading the libraries 
 
 library(shiny)
-library(datasets)
+library(quantmod)
+library(tidyquant)
+library(ggplot2)
+library(xts)
+library(zoo)
+library(plotly)
+library(tidyr)
 library(dplyr)
 
-shinyServer(function(input, output) {
+
+
+data <- as.data.frame(CO2) %>%
+    gather(conc, uptake)
+
+server <- function(input, output, session) {
+    output$plot <- renderPlot({
+        ggplot(data, aes (x=conc , y=uptake))+
+            geom_point(colour = 'blue', size = 3, type=line)
+        }, 
+        res = 100, 
+        width = "auto",
+        height = "auto")
     
-    output$table <- renderDataTable({
-        d_seq = seq(from = input$disp[1], to = input$disp[2], by = 0.1)
-        pow_seq = seq(from = input$hp[1], to = input$hp[2], by = 1)
-        data = transmute(mtcars, Car = rownames(mtcars), MilesPerGallon = mpg, 
-                         GasolineExpenditure = input$dis/mpg*input$cost,
-                         Cylinders = cyl, Displacement = disp, Horsepower = hp, 
-                         Transmission = am)
-        data = filter(data, GasolineExpenditure <= input$gas, Cylinders %in% input$cyl, 
-                      Displacement %in% d_seq, Horsepower %in% pow_seq, Transmission %in% input$am)
-        data = mutate(data, Transmission = ifelse(Transmission==0, "Automatic", "Manual"))
-        data = arrange(data, GasolineExpenditure)
-        data
-    }, options = list(lengthMenu = c(5, 15, 30), pageLength = 30))
- 
-})
+    output$data <- renderTable({
+        brushedPoints(data, input$plot_brush)
+    })
+}
